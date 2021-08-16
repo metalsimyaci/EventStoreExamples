@@ -39,6 +39,28 @@ Bağlantı bilgisini aşağıdaki gibi set edebiliyoruz.
 ConnectTo=tcp://localhost:11115;DefaultUserCredentials=admin:changeit;UseSslConnection=true;TargetHost=eventstore.org;ValidateServer=false
 ```
 
+## Couchbase' i docker üzerinden ayağa kaldırma
+
+``` bash
+docker run -d --name couchbase -p 8091-8094:8091-8094 -p 11210:11210 couchbase
+```
+
+Couchbase ayağa kalktığında aşağıdaki adresten panele girip bir cluster oluşturmalısınız.
+
+http://localhost:8091/
+
+Aşağıdaki curl komut satırları ile Couchbase’de “checkpoints” ve “tasks” isimli iki adet bucket oluşturalım. -u parametresini cluster oluştururken vermiş olduğunuz bilgiler ile değiştirmeyi unutmayın.
+
+```bash
+curl -X POST -u [admin]:[password] http://localhost:8091/pools/default/buckets
+  -d name=checkpoints -d ramQuotaMB=100 -d authType=none -d bucketType=couchbase
+```
+
+```bash
+curl -X POST -u [admin]:[password] http://localhost:8091/pools/default/buckets
+  -d name=tasks -d ramQuotaMB=100 -d authType=none -d bucketType=couchbas
+```
+
 ### Kaynak
 
 [Gençay YILDIZ](https://www.gencayyildiz.com/blog/net-core-ortaminda-event-store-ile-event-sourcing-yapilanmasi/)

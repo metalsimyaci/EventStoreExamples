@@ -1,4 +1,5 @@
 using System;
+using Couchbase.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -59,6 +60,17 @@ namespace EventSourcing.TaskApp
             eventStoreConnection.ConnectAsync().GetAwaiter().GetResult();
             services.AddSingleton(eventStoreConnection);
             services.AddTransient<AggregateRepository>();
+
+            #endregion
+
+            #region Couchbase Dependency Implementation
+
+            services.AddCouchbase((opt) =>
+            {
+                opt.ConnectionString = Configuration.GetValue<string>("Couchbase:ConnectionString");
+                opt.UserName = Configuration.GetValue<string>("Couchbase:Username");
+                opt.Password = Configuration.GetValue<string>("Couchbase:Password");
+            });
 
             #endregion
 
