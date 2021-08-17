@@ -12,10 +12,12 @@ namespace EventSourcing.TaskApp.Controllers
     public class TaskController : ControllerBase
     {
         private readonly AggregateRepository _aggregateRepository;
+        private readonly TaskRepository _taskRepository;
 
-        public TaskController(AggregateRepository aggregateRepository)
+        public TaskController(AggregateRepository aggregateRepository, TaskRepository taskRepository)
         {
             _aggregateRepository = aggregateRepository;
+            _taskRepository = taskRepository;
         }
 
         [HttpPost, Route("create")]
@@ -92,6 +94,13 @@ namespace EventSourcing.TaskApp.Controllers
                 Console.WriteLine(e);
                 return BadRequest(e.Message);
             }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Get(Guid id)
+        {
+            var task = await _taskRepository.Get(id);
+            return Ok(task);
         }
     }
 }

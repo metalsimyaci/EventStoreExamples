@@ -1,5 +1,6 @@
 using System;
 using Couchbase.Extensions.DependencyInjection;
+using EventSourcing.TaskApp.HostedServices;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using EventSourcing.TaskApp.Infrastructure;
+using EventSourcing.TaskApp.Infrastructure.Buckets;
 using EventStore.ClientAPI;
 
 namespace EventSourcing.TaskApp
@@ -26,7 +28,7 @@ namespace EventSourcing.TaskApp
 
             var eventStoreConnection = EventStoreConnection.Create(
                 connectionString: Configuration.GetValue<string>("EventStore:ConnectionString"),
-                builder:ConnectionSettings.Create().KeepReconnecting(),
+                builder: ConnectionSettings.Create().KeepReconnecting(),
                 connectionName: Configuration.GetValue<string>("EventStore:ConnectionName"));
 
             #region Connection Events
@@ -66,13 +68,21 @@ namespace EventSourcing.TaskApp
             #region Couchbase Dependency Implementation
 
             services.AddCouchbase((opt) =>
-            {
-                opt.ConnectionString = Configuration.GetValue<string>("Couchbase:ConnectionString");
-                opt.UserName = Configuration.GetValue<string>("Couchbase:Username");
-                opt.Password = Configuration.GetValue<string>("Couchbase:Password");
-            });
+                {
+                    opt.ConnectionString = Configuration.GetValue<string>("Couchbase:ConnectionString");
+                    opt.UserName = Configuration.GetValue<string>("Couchbase:Username");
+                    opt.Password = Configuration.GetValue<string>("Couchbase:Password");
+
+                })
+                .AddCouchbaseBucket<ICheckpointBucketProvider>("checkpoints")
+                .AddCouchbaseBucket<ITaskBucketProvider>("tasks");
+
+            services.AddTransient<CheckpointRepository>();
+            services.AddTransient<TaskRepository>();
 
             #endregion
+
+            services.AddHostedService<TaskHostedService>();
 
             services.AddControllers();
             services.AddSwaggerGen(c =>
@@ -81,8 +91,7 @@ namespace EventSourcing.TaskApp
             });
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime hostApplicationLifetime)
         {
             if (env.IsDevelopment())
             {
@@ -98,6 +107,11 @@ namespace EventSourcing.TaskApp
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+            });
+
+            hostApplicationLifetime.ApplicationStopped.Register(() =>
+            {
+                app.ApplicationServices.GetRequiredService<ICouchbaseLifetimeService>().Close();
             });
         }
     }
